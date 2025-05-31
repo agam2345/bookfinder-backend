@@ -1,10 +1,12 @@
 const path = require('path');
-const {getAllBooks, registerUser, login} = require('./handler');
+const {getAllBooks, registerUser, login, GetBooksByQuery, GetBooksByLastReading, addFinishedBooks, getFinishedBooks} = require('./handler');
+
 const routes = [
     {
         method : 'GET',
         path: '/books',
-        handler: getAllBooks
+        handler: getAllBooks,
+    
     },
     {
         method: 'POST',
@@ -35,7 +37,30 @@ const routes = [
          options: {
             auth: false 
         }
-}
+    },
+
+    {
+        method: 'POST',
+        path: '/books/filter',
+        handler: GetBooksByQuery,
+    },
+    {
+        method: 'POST',
+        path: '/books/recommended',
+        handler: GetBooksByLastReading,
+    },
+
+    {
+        method: 'POST',
+        path: '/finished-books',
+        handler: addFinishedBooks,
+    },
+    {
+        method: 'GET',
+        path: '/finished-books',
+        handler : getFinishedBooks
+    }
+
 ]
 
-module.exports = routes;
+module.exports = routes;    
