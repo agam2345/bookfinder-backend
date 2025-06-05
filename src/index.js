@@ -1,7 +1,7 @@
-import * as tf from '@tensorflow/tfjs-node';  // Import tfjs-node untuk performa lebih cepat
+import * as tf from '@tensorflow/tfjs-node';  
 import { AutoTokenizer } from '@xenova/transformers';
 
-// Fungsi untuk menghitung Cosine Similarity
+
 function cosineSimilarity(a, b) {
   const dotProduct = tf.sum(tf.mul(a, b)).dataSync()[0];
   const normA = tf.norm(a).dataSync()[0];
@@ -10,26 +10,22 @@ function cosineSimilarity(a, b) {
 }
 
  async function recomendBook() {
-  // 1. Tokenizer dan model
+
   const tokenizer = await AutoTokenizer.from_pretrained('bert-base-uncased');
   const model = await tf.loadGraphModel('http://localhost:5000/model/model.json');
   
-  // 2. Input pengguna
   const inputText = 'sad and so lonely';
   
-  // 3. Ambil data buku dari server
   const fetchResponse = await fetch('http://localhost:5000/books');
   const responseBooks = await fetchResponse.json();
-  console.log("Response Type:", typeof(responseBooks)); // Cek tipe response
+  console.log("Response Type:", typeof(responseBooks)); 
   const books = responseBooks.data;
   
-  // 4. Tokenisasi input teks pengguna
   const encodedInput = await tokenizer.encode(inputText);
   const inputIdsTensor = tf.tensor([encodedInput], undefined, 'int32');
   const attentionMaskTensor = tf.tensor([Array(encodedInput.length).fill(1)], undefined, 'int32');
   const tokenTypeIdsTensor = tf.tensor([Array(encodedInput.length).fill(0)], undefined, 'int32');
   
-  // 5. Dapatkan representasi input pengguna
   const userInputResult = await model.execute({
     input_ids: inputIdsTensor,
     attention_mask: attentionMaskTensor,
@@ -37,7 +33,6 @@ function cosineSimilarity(a, b) {
   });
   console.log("User input result:", userInputResult);
   
-  // 6. Tokenisasi dan representasi deskripsi buku
   const bookEmbeddings = [];
   for (const book of books) {
     const bookDescription = book.title;
@@ -56,23 +51,18 @@ function cosineSimilarity(a, b) {
     bookEmbeddings.push({ book, embedding: bookResult });
   }
 
-  // 7. Proses tensor untuk cosine similarity
-  const userInputTensor = userInputResult.reshape([-1]); // Meratakan tensor input pengguna
+  const userInputTensor = userInputResult.reshape([-1]);
   console.log("User input tensor:", userInputTensor);
 
-  // 8. Hitung similarity dan urutkan hasilnya
   const similarities = bookEmbeddings.map(({ book, embedding }) => {
-    const bookTensor = embedding.reshape([-1]); // Meratakan tensor embedding buku
+    const bookTensor = embedding.reshape([-1]);
     const similarity = cosineSimilarity(userInputTensor, bookTensor);
     return { book, similarity };
   });
   
-  // 9. Urutkan berdasarkan similarity tertinggi
   similarities.sort((a, b) => b.similarity - a.similarity);
-  
-  // 10. Tampilkan buku yang paling relevan
-  console.log("Buku yang paling relevan:", similarities.slice(0, 5)); 
-  //return similarities.slice(0, 5); // Menampilkan top 5 buku yang paling relevan
+
+  return similarities.slice(0, 5); 
 }
 
 recomendBook();

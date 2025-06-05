@@ -1,13 +1,12 @@
 const db = require('./database');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const recomendBook  = require('./service.js');
+const recomendBook  = require('./model-bert.js');
 const rekomendasikanBuku = require('./content-base-filtering.js');
-const { resolve } = require('path-browserify');
 
-function getAllBooks(request, h) {
+async function getAllBooks(request, h) {
     const { mood, genre } = request.query;
-    console.log(genre)
+    console.log(genre);
 
     let sql = "SELECT * FROM books";
     const values = [];
@@ -29,29 +28,41 @@ function getAllBooks(request, h) {
         sql += " " + conditions.join(" OR ");
     }
 
-    return new Promise((resolve, reject) => {
-        db.query(sql, values, (err, result) => {
-            if (err) {
-                return reject(h.response({
-                    status: "fail",
-                    message: err.message
-                }).code(500));
-            }
-
-            return resolve(h.response({
-                status: "success",
-                data: result
-            }).code(200));
+    try {
+        const result = await new Promise((resolve, reject) => {
+            db.query(sql, values, (err, result) => {
+                if (err) return reject(err);
+                resolve(result);
+            });
         });
-    });
+
+        return h.response({
+            status: "success",
+            data: result
+        }).code(200);
+
+    } catch (err) {
+        console.error("DB Query Error:", err);
+        return h.response({
+            status: "fail",
+            message: err.message
+        }).code(500);
+    }
 }
 
 async function GetBooksByQuery(request, h) {
   const text = request.payload;
   const query = String(text?.text || '').trim();
+  const authHeader = request.headers.authorization;
+  const token = authHeader && authHeader.split(' ')[1];
+
   try {
-    const result = await recomendBook(query);
-    return h.response(result).code(200);
+    const result = await recomendBook(query, token);
+    return h.response(
+       {
+         data: result
+       }
+    ).code(200);
   } catch (err) {
     console.error("Rekomendasi gagal:", err);
     return h.response({
@@ -109,108 +120,141 @@ async function registerUser(request, h) {
         }).code(500);
     }
 }
-
-function login(request, h){
+async function login(request, h) {
     const { email, password } = request.payload;
 
-    return new Promise((resolve, reject) => {
-        db.query("SELECT * FROM user WHERE email = ?", [email], async(err, result) => {
-            if(err){
-                return reject(
-                    h.response({
-                        status: "fail",
-                        message: err.message
-                    })
-                );
-            }
-            if(result.length === 0) {
-                return resolve(
-                    h.response({
-                        status: "fail",
-                        message: "user tidak ditemukan"
-                    })
-                );
-            }
-            const user = result[0];
+    try {
+        const result = await new Promise((resolve, reject) => {
+            db.query("SELECT * FROM user WHERE email = ?", [email], (err, result) => {
+                if (err) return reject(err);
+                resolve(result);
+            });
+        });
 
-            const isValid = await bcrypt.compare(password, user.password);
-            if(!isValid) {
-                return resolve(
-                    h.response({
-                        status: "fail",
-                        message: "password salah"
-                    }).code(401)
-                );
+        if (result.length === 0) {
+            return h.response({
+                status: "fail",
+                message: "User tidak ditemukan"
+            }).code(404);
+        }
+
+        const user = result[0];
+        const isValid = await bcrypt.compare(password, user.password);
+
+        if (!isValid) {
+            return h.response({
+                status: "fail",
+                message: "Password salah"
+            }).code(401);
+        }
+
+        const token = jwt.sign(
+            { id: user.id, email: user.email, username: user.username },
+            'rahasia_super_aman',
+            { expiresIn: '1h' }
+        );
+
+        return h.response({
+            status: "success",
+            data: {
+                accessToken: token
             }
+        }).code(200);
 
-            const token = jwt.sign(
-                { id: user.id, email: user.emai, username: user.username},
-                'rahasia_super_aman',
-                {expiresIn: '1h'}
-            );
-            return resolve(
-                h.response(
-                    {
-                        status: "success",
-                        message: "Login berhasil",
-                        token : token
-                    }
-                )
-            )
-
-        })
-    });
+    } catch (err) {
+        return h.response({
+            status: "fail",
+            message: err.message
+        }).code(500);
+    }
 }
 
-function addFinishedBooks(request, h){
+
+async function addFinishedBooks(request, h) {
     const { id: user_id } = request.auth.credentials; 
     const { book_id } = request.payload;
 
-    const sql = `INSERT INTO finished_books  (user_id, book_id) VALUES (?,?)`;
-    const values=[user_id, book_id];
+    const sql = `INSERT INTO finished_books (user_id, book_id) VALUES (?, ?)`;
+    const values = [user_id, book_id];
 
-    return new Promise((resolve, reject)=>{
-        db.query(sql, values, (err, result)=>{
-            if(err){
-                return reject(h.response({
-                status: 'fail',
-                message: err.message
-            }).code(500));
-            }
-             return resolve(h.response({
-             status: 'success',
-             message: 'Buku ditandai selesai dibaca.'
-             }).code(201));
+    try {
+        await new Promise((resolve, reject) => {
+            db.query(sql, values, (err, result) => {
+                if (err) return reject(err);
+                resolve(result);
+            });
         });
-    });
-}
 
-function getFinishedBooks(request, h){
+        return h.response({
+            status: 'success',
+            message: 'Buku ditandai selesai dibaca.'
+        }).code(201);
+
+    } catch (err) {
+        return h.response({
+            status: 'fail',
+            message: err.message
+        }).code(500);
+    }
+}
+async function getFinishedBooks(request, h) {
     const { id: user_id } = request.auth.credentials;
-    const sql = `
-            SELECT fb.id AS finished_id, fb.finished_at, b.*
-            FROM finished_books fb
-            JOIN books b ON fb.book_id = b.id
-            WHERE fb.user_id = ?
-        `;
 
-    return new Promise((resolve, reject)=> {
-        db.query(sql, user_id, (err, result) => {
-              if(err){
-                return reject(h.response({
-                    status: 'fail',
-                    message: err.message
-                }).code(500));
-            }
-            return resolve(h.response({
-                status: 'success',
-                data : result
-            }).code(200));
-        }
-        )
-    })
+    const sql = `
+        SELECT fb.id AS finished_id, fb.finished_at, b.*
+        FROM finished_books fb
+        JOIN books b ON fb.book_id = b.id
+        WHERE fb.user_id = ?
+    `;
+
+    try {
+        const result = await new Promise((resolve, reject) => {
+            db.query(sql, [user_id], (err, result) => {
+                if (err) return reject(err);
+                resolve(result);
+            });
+        });
+
+        return h.response({
+            status: 'success',
+            data: result
+        }).code(200);
+
+    } catch (err) {
+        return h.response({
+            status: 'fail',
+            message: err.message
+        }).code(500);
+    }
 }
 
 
+async function getDetailBook(request, h){
+    const { id } = request.params;
+    const sql = 'SELECT * FROM books WHERE id = ? '
 
-module.exports = {getAllBooks,registerUser, login, GetBooksByQuery, GetBooksByLastReading, addFinishedBooks, getFinishedBooks};
+    try{
+    const data = await new Promise((resolve, reject)=> {
+        db.query(sql, id, (err, result) => {
+            if(err){
+                return reject();
+            }
+            resolve(result);
+
+        });});
+         return h.response({
+                status: 'success',
+                data : data
+            }).code(200);
+
+    } catch(error){
+         returnh.response({
+                status: 'fail',
+                message : error.message
+            }).code(200);
+
+    }
+}
+
+
+module.exports = {getAllBooks,registerUser, login, GetBooksByQuery, GetBooksByLastReading, addFinishedBooks, getFinishedBooks, getDetailBook};

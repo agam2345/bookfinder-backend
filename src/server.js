@@ -8,6 +8,11 @@ const init = async () => {
     const server = Hapi.server({
         port: 5000,
         host: 'localhost',
+        routes:{
+            cors:{
+                origin: ['*']
+            }
+        }
     });
 
     await server.register([Jwt,Inert]);
@@ -19,7 +24,7 @@ const init = async () => {
         sub: false,
         nbf: true,
         exp: true,
-        maxAgeSec: 14400,
+        maxAgeSec: 86400,
         timeSkewSec: 15
         },
         validate: (artifacts, request, h) => {

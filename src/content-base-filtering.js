@@ -1,13 +1,12 @@
 const fs = require("fs");
 const path = require("path");
 
-// Load semua data JSON
+
 const tfidfModel = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../cbf/tfidf_model.json"), "utf8"));
 const tfidfMatrix = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../cbf/tfidf_matrix.json"), "utf8"));
 const titleToIndex = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../cbf/title_to_index.json"), "utf8"));
 const bookData = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../cbf/book_data.json"), "utf8"));
 
-// Fungsi cosine similarity antara dua vektor
 function cosineSimilarity(vecA, vecB) {
   let dot = 0, normA = 0, normB = 0;
   for (let i = 0; i < vecA.length; i++) {
@@ -19,7 +18,6 @@ function cosineSimilarity(vecA, vecB) {
   return dot / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
-// Fungsi rekomendasi buku
 function rekomendasikanBuku(judulBukuInput, topN = 5) {
   if (!(judulBukuInput in titleToIndex)) {
     return `Buku '${judulBukuInput}' tidak ditemukan dalam data.`;
@@ -28,10 +26,8 @@ function rekomendasikanBuku(judulBukuInput, topN = 5) {
   const idx = titleToIndex[judulBukuInput];
   const simScores = tfidfMatrix.map((vec, i) => [i, cosineSimilarity(tfidfMatrix[idx], vec)]);
 
-  // Urutkan dari paling mirip (descending)
   simScores.sort((a, b) => b[1] - a[1]);
 
-  // Ambil topN selain indeks buku itu sendiri
   const topSimScores = simScores.filter(x => x[0] !== idx).slice(0, topN);
 
   return topSimScores.map(([i, score]) => ({
@@ -39,9 +35,5 @@ function rekomendasikanBuku(judulBukuInput, topN = 5) {
     ...bookData[i]
   }));
 }
-
-// // Contoh pemakaian
-// const hasil = rekomendasikanBuku("Ocean Star Express", 10);
-// console.log(hasil);
 
 module.exports = rekomendasikanBuku;
