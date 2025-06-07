@@ -11,9 +11,7 @@ const routes = [
         method: 'GET',
         path: '/books/{id}',
         handler: getDetailBook,
-        options:{
-            auth: false
-        }
+    
     },
     {
         method: 'POST',
