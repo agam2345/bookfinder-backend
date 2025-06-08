@@ -4,45 +4,36 @@ const bcrypt = require('bcryptjs');
 const recomendBook  = require('./model-bert.js');
 const rekomendasikanBuku = require('./content-base-filtering.js');
 
+
 async function getAllBooks(request, h) {
     const { mood, genre } = request.query;
-    console.log(genre);
 
-    let sql = "SELECT * FROM books";
-    const values = [];
+    let query = db.from('books').select('*');
 
-    if (mood || genre) {
-        sql += " WHERE";
-        const conditions = [];
-
-        if (genre) {
-            conditions.push("simple_categories = $1");
-            values.push(genre);
+    if (genre || mood) {
+        if (genre && mood) {
+            query = query.or(`simple_categories.eq.${genre},emotion_simple.eq.${mood}`);
+        } else if (genre) {
+            query = query.eq('simple_categories', genre);
+        } else if (mood) {
+            query = query.eq('emotion_simple', mood);
         }
-
-        if (mood) {
-            conditions.push("emotion_simple = $2");
-            values.push(mood);
-        }
-
-        sql += " " + conditions.join(" OR ");
     }
 
-    try {
-        const result = await db.query(sql, values);
+    const { data, error } = await query;
 
-        return h.response({
-            status: "success",
-            data: result.rows
-        }).code(200);
-
-    } catch (err) {
-        console.error("DB Query Error:", err);
+    if (error) {
+        console.error("Supabase Error:", error);
         return h.response({
             status: "fail",
-            message: err.message
+            message: error.message
         }).code(500);
     }
+
+    return h.response({
+        status: "success",
+        data: data
+    }).code(200);
 }
 
 async function GetBooksByQuery(request, h) {
@@ -90,15 +81,27 @@ async function GetBooksByLastReading(request, h){
 async function registerUser(request, h) {
     const { username, email, password } = request.payload;
     const hashPassword = await bcrypt.hash(password, 10);
-    const sql = "INSERT INTO users (email, username, password) VALUES ($1, $2, $3) RETURNING *";
 
     try {
-        const result = await db.query(sql, [email, username, hashPassword]);
+        const { data, error } = await db
+            .from('users')
+            .insert([
+                {
+                    email: email,
+                    username: username,
+                    password: hashPassword
+                }
+            ])
+            .single();
+
+        
+        if (error) {
+            throw new Error(error.message);
+        }
 
         return h.response({
             status: 'success',
-            message: "User registered successfully",
-            data: result.rows[0]
+            message: "User registered successfully"
         }).code(201);
 
     } catch (err) {
@@ -108,20 +111,25 @@ async function registerUser(request, h) {
         }).code(500);
     }
 }
+
 async function login(request, h) {
     const { email, password } = request.payload;
 
     try {
-        const result = await db.query("SELECT * FROM users WHERE email = $1", [email])
+        const { data: result, error } = await db.from('users').select('*') .eq('email', email).single();
+        
+        if (error) {
+            throw new Error(error.message);
+        }
 
-        if (result.length === 0) {
+        if (!result) {
             return h.response({
                 status: "fail",
                 message: "User tidak ditemukan"
             }).code(404);
         }
 
-        const user = result.rows[0];
+        const user = result;
         const isValid = await bcrypt.compare(password, user.password);
 
         if (!isValid) {
@@ -155,13 +163,16 @@ async function login(request, h) {
 
 async function addFinishedBooks(request, h) {
     const { id: user_id } = request.auth.credentials; 
-    const { book_id } = request.payload;
-
-    const sql = `INSERT INTO finished_books (user_id, book_id) VALUES ($1, $2)`;
-    const values = [user_id, book_id];
+    const { book_id , finished_at} = request.payload;
 
     try {
-        await db.query(sql, values);
+        const { data, error } = await db.from('finished_books').insert([
+            { user_id: user_id, book_id: book_id ,finished_at: finished_at}
+        ]);
+        
+        if (error) {
+            throw new Error(error.message);
+        }
 
         return h.response({
             status: 'success',
@@ -175,22 +186,23 @@ async function addFinishedBooks(request, h) {
         }).code(500);
     }
 }
+
 async function getFinishedBooks(request, h) {
     const { id: user_id } = request.auth.credentials;
 
-    const sql = `
-        SELECT fb.id AS finished_id, fb.finished_at, b.*
-        FROM finished_books fb
-        JOIN books b ON fb.book_id = b.id
-        WHERE fb.user_id = $1
-    `;
-
     try {
-         const result = await db.query(sql, [user_id]);
+        const { data, error } = await db
+            .from('finished_books')
+            .select('id, finished_at, books(*)')
+            .eq('user_id', user_id);
+        
+        if (error) {
+            throw new Error(error.message);
+        }
 
         return h.response({
             status: 'success',
-            data: result.rows
+            data: data
         }).code(200);
 
     } catch (err) {
@@ -204,21 +216,22 @@ async function getFinishedBooks(request, h) {
 
 async function getDetailBook(request, h){
     const { id } = request.params;
-    const sql = 'SELECT * FROM books WHERE id = $1'
 
     try{
-    const data = await db.query(sql, [id])
+    const {data, error} = await db.from('books').select('*').eq('id', id).single();
+        if (error) {
+            throw new Error(error.message);
+        }
          return h.response({
                 status: 'success',
-                data : data.rows
+                data : data
             }).code(200);
 
-    } catch(error){
+    } catch(err){
          return h.response({
                 status: 'fail',
-                message : error.message
+                message : err.message
             }).code(200);
-
     }
 }
 
