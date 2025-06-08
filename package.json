@@ -5,9 +5,7 @@
   "main": "src/server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node src/server.js",
-    "start-model": "node src/service.js",
-    "build": "webpack"
+    "start": "node src/server.js"
   },
   "author": "",
   "license": "ISC",
