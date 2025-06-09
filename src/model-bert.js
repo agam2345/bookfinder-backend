@@ -12,7 +12,7 @@ function cosineSimilarity(a, b) {
 
 async function recomendBook(query, token) {
   const tokenizer = await tokenizerPromise;
-  const model = await tf.loadGraphModel('https://bookfinder-backend-production.up.railway.app/model/model.json');
+  const model = await tf.loadGraphModel('file://model/model.json');
   
   const inputText = query;
   
