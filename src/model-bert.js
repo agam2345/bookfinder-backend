@@ -9,10 +9,11 @@ function cosineSimilarity(a, b) {
   const normB = tf.norm(b).dataSync()[0];
   return dotProduct / (normA * normB);
 }
+const modelPromise = tf.loadGraphModel('file://model/model.json');
 
 async function recomendBook(query, token) {
   const tokenizer = await tokenizerPromise;
-  const model = await tf.loadGraphModel('file://model/model.json');
+  const model = await modelPromise;
   
   const inputText = query;
   
