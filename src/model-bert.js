@@ -9,15 +9,14 @@ function cosineSimilarity(a, b) {
   const normB = tf.norm(b).dataSync()[0];
   return dotProduct / (normA * normB);
 }
-const modelPromise = tf.loadGraphModel('file://model/model.json');
 
 async function recomendBook(query, token) {
   const tokenizer = await tokenizerPromise;
-  const model = await modelPromise;
+  const model = await tf.loadGraphModel('file://model/model.json');
   
   const inputText = query;
   
-  const fetchResponse = await fetch('https://bookfinder-backend-production.up.railway.app/books', {
+  const fetchResponse = await fetch('http://127.0.0.1:5000/books', {
     headers: {
       'Authorization': `Bearer ${token}`
     }
@@ -25,6 +24,7 @@ async function recomendBook(query, token) {
   const responseBooks = await fetchResponse.json();
   console.log("Response Type:", responseBooks); 
   const books = responseBooks.data;
+  console.log(books);
   
   const encodedInput = await tokenizer.encode(inputText);
   const inputIdsTensor = tf.tensor([encodedInput], undefined, 'int32');
