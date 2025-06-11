@@ -59,12 +59,13 @@ async function GetBooksByQuery(request, h) {
 }
 
 async function GetBooksByLastReading(request, h){
-    const {title} = request.payload;
+    const {title} = request.query;
     try{
         const result = await rekomendasikanBuku(title);
         return h.response(
             {
                 status: 'success',
+                jumlah : result.length,
                 data : result
             }
         ).code(200);

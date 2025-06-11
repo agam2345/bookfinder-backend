@@ -50,7 +50,7 @@ const routes = [
         handler: GetBooksByQuery,
     },
     {
-        method: 'POST',
+        method: 'GET',
         path: '/books/recommended',
         handler: GetBooksByLastReading,
     },

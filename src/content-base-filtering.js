@@ -18,7 +18,7 @@ function cosineSimilarity(vecA, vecB) {
   return dot / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
-function rekomendasikanBuku(judulBukuInput, topN = 5) {
+function rekomendasikanBuku(judulBukuInput, topN = 10) {
   if (!(judulBukuInput in titleToIndex)) {
     return `Buku '${judulBukuInput}' tidak ditemukan dalam data.`;
   }
