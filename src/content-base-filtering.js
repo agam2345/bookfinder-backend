@@ -20,7 +20,7 @@ function cosineSimilarity(vecA, vecB) {
 
 function rekomendasikanBuku(judulBukuInput, topN = 10) {
   if (!(judulBukuInput in titleToIndex)) {
-    return `Buku '${judulBukuInput}' tidak ditemukan dalam data.`;
+    return [];
   }
 
   const idx = titleToIndex[judulBukuInput];

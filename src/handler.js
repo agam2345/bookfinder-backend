@@ -8,36 +8,43 @@ const rekomendasikanBuku = require('./content-base-filtering.js');
 async function getAllBooks(request, h) {
     const { mood, genre } = request.query;
 
-    let query = db.from('books').select('*');
+    try{
+        let query = db.from('books').select('*');
 
-    if (genre || mood) {
-        if (genre && mood) {
-            query = query.or(`simple_categories.eq.${genre},emotion_simple.eq.${mood}`);
-        } else if (genre) {
-            query = query.eq('simple_categories', genre);
-        } else if (mood) {
-            query = query.eq('emotion_simple', mood);
+        if (genre || mood) {
+            if (genre && mood) {
+               query = query.eq('simple_categories', genre).eq('emotion_simple', mood);
+            } else if (genre) {
+                query = query.eq('simple_categories', genre);
+            } else if (mood) {
+                query = query.eq('emotion_simple', mood);
+            }
         }
-    }
+        const { data, error } = await query;
 
-    const { data, error } = await query;
+        if (error) {
+            return h.response({
+                status: "fail",
+                message: error.message
+            }).code(400);
+        }
 
-    if (error) {
-        console.error("Supabase Error:", error);
         return h.response({
-            status: "fail",
-            message: error.message
-        }).code(500);
-    }
+            status: "success",
+            data: data
+        }).code(200);
 
-    return h.response({
-        status: "success",
-        data: data
-    }).code(200);
+    } catch(err){
+        return h.response({
+        status: 'fail',
+        message: err.message
+        }).code(500);
+
+    }
 }
 
 async function GetBooksByQuery(request, h) {
-  const text = request.payload;
+  const text = request.query;
   const query = String(text?.text || '').trim();
   const authHeader = request.headers.authorization;
   const token = authHeader && authHeader.split(' ')[1];
@@ -46,6 +53,7 @@ async function GetBooksByQuery(request, h) {
     const result = await recomendBook(query, token);
     return h.response(
        {
+         status: 'success',
          data: result
        }
     ).code(200);
@@ -62,25 +70,46 @@ async function GetBooksByLastReading(request, h){
     const {title} = request.query;
     try{
         const result = await rekomendasikanBuku(title);
+        if(result.length === 0){
+            return h.response(
+            {
+                status: 'fail',
+                data : "Buku tidak ditemukan"
+            }
+        ).code(404);
+
+        }
         return h.response(
             {
                 status: 'success',
-                jumlah : result.length,
-                data : result
+                data: result,
             }
         ).code(200);
     } catch(err){
-         console.error("Rekomendasi gagal:", err);
-    return h.response({
-      status: 'fail',
-      message: err.message
-    }).code(500);
+        return h.response({
+        status: 'fail',
+        message: err.message
+        }).code(500);
 
     }
 }
 
 async function registerUser(request, h) {
     const { username, email, password } = request.payload;
+
+     if (!username || !email || !password) {
+        return h.response({
+            status: "fail",
+            message: "Username, email, dan password harus diisi"
+        }).code(400);
+    }
+
+    if (password.length < 8) {
+        return h.response({
+            status: "fail",
+            message: "Password minimal harus 8 karakter"
+        }).code(400);
+    }
     const hashPassword = await bcrypt.hash(password, 10);
 
     try {
@@ -97,7 +126,10 @@ async function registerUser(request, h) {
 
         
         if (error) {
-            throw new Error(error.message);
+            return h.response({
+                status: "fail",
+                message: error.message
+            }).code(400);
         }
 
         return h.response({
@@ -118,11 +150,14 @@ async function login(request, h) {
 
     try {
         const { data: result, error } = await db.from('users').select('*') .eq('email', email).single();
-        
-        if (error) {
-            throw new Error(error.message);
-        }
 
+        if (error) {
+            return h.response({
+                status: "fail",
+                message: error.message
+            }).code(400);
+        }
+        
         if (!result) {
             return h.response({
                 status: "fail",
@@ -166,13 +201,23 @@ async function addFinishedBooks(request, h) {
     const { id: user_id } = request.auth.credentials; 
     const { book_id , finished_at} = request.payload;
 
+    if (!book_id || !finished_at) {
+        return h.response({
+            status: 'fail',
+            message: 'Field book_id dan finished_at wajib diisi.'
+        }).code(400);
+    }
+
     try {
         const { data, error } = await db.from('finished_books').insert([
             { user_id: user_id, book_id: book_id ,finished_at: finished_at}
         ]);
         
         if (error) {
-            throw new Error(error.message);
+            return h.response({
+                status: "fail",
+                message: error.message
+            }).code(400);
         }
 
         return h.response({
@@ -198,7 +243,10 @@ async function getFinishedBooks(request, h) {
             .eq('user_id', user_id);
         
         if (error) {
-            throw new Error(error.message);
+            return h.response({
+                status: "fail",
+                message: error.message
+            }).code(400);
         }
 
         return h.response({
@@ -220,8 +268,12 @@ async function getDetailBook(request, h){
 
     try{
     const {data, error} = await db.from('books').select('*').eq('id', id).single();
-        if (error) {
-            throw new Error(error.message);
+
+       if (error) {
+            return h.response({
+                status: "fail",
+                message: `Buku dengan id ${id} tidak ditemukan`
+            }).code(400);
         }
          return h.response({
                 status: 'success',
@@ -232,7 +284,7 @@ async function getDetailBook(request, h){
          return h.response({
                 status: 'fail',
                 message : err.message
-            }).code(200);
+            }).code(500);
     }
 }
 

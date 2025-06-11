@@ -45,7 +45,7 @@ const routes = [
     },
 
     {
-        method: 'POST',
+        method: 'GET',
         path: '/books/filter',
         handler: GetBooksByQuery,
     },
