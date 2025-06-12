@@ -32,3 +32,6 @@ BookFinder adalah backend API yang menyediakan layanan pencarian dan rekomendasi
 3.  **Penyambungan Basis Data:** Pastikan database sudah berjalan dan terhubung dengan supabase.
 4.  **Konfigurasi:** buat file .env dan  isikan dengan SUPABASE_URL serta SUPABASE_KEY dari Supabase yang telah dibuat.
 5.  **Menjalankan Aplikasi:** `npm run start`
+
+## Dokumentasi API
+https://imaginative-palmier-61d82e.netlify.app/
