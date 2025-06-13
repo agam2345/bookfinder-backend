@@ -34,4 +34,4 @@ BookFinder adalah backend API yang menyediakan layanan pencarian dan rekomendasi
 5.  **Menjalankan Aplikasi:** `npm run start`
 
 ## Dokumentasi API
-https://imaginative-palmier-61d82e.netlify.app/
+https://zingy-douhua-b1d27d.netlify.app/
