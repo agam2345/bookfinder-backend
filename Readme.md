@@ -18,6 +18,8 @@ BookFinder adalah backend API yang menyediakan layanan pencarian dan rekomendasi
 
 - **🔍 Pencarian Buku**  
   Menampilkan data buku berdasarkan kueri teks yang diberikan oleh pengguna.
+  - **🔍 filtering Buku berdasarkan mood dan genre**  
+  Menampilkan data buku berdasarkan filter mood dan genre  yang diberikan oleh pengguna.
 
 - **📝 Detail Buku**  
   Menampilkan detail lengkap dari buku tertentu berdasarkan ID.
